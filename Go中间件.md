@@ -1,5 +1,8 @@
-# go middleware
-> 对中间件这个概念还是没有一个清楚的感觉
+# go框架
+
+[toc]
+
+## base
 
 使用中间件技术，将业务代码和非业务代码进行解耦。
 
@@ -189,4 +192,121 @@ r.Add("/", helloHandler)
 
 通过多步设置，我们拥有了和上一节差不多的执行函数链。胜在直观易懂，如果我们要增加或者删除 middleware，只要简单地增加删除对应的 Use 调用就可以了。非常方便。
 
+
+
+## new
+
+### 以类的形式
+
+先看一个最简单的handler实现
+
+```go
+package main
+
+import "net/http"
+
+func myHandler(w http.ResponseWriter, r *http.Request){
+	w.Write([]byte("Hello World"))
+}
+
+func main() {
+	http.ListenAndServe(":7777", http.HandlerFunc(myHandler))
+}
+```
+
+这部分代码，我们定义一个myHandler，它接受`http.ResponseWriter`和 `*http.Request`两个参数，然后向`ResponseWriter`中写入`Hello World`。在`main`函数中，我们直接使用了`ListenAndServe`方法监听本地的7777端口。
+
+注意，**第二个参数必须为Handler类型**。而要是Handler类型，必须实现`ServeHTTP`方法。但是Go的源码中，其实已经为`HandlerFunc`实现了这个方法，所以我们只要实现了`HandlerFunc`即可——也就是**函数是`func(ResponseWriter, *Request)`类型就是Handler类型**。
+
+```go
+func ListenAndServe(addr string, handler Handler) error {}
+
+type Handler interface {
+	ServeHTTP(ResponseWriter, *Request)
+}
+
+// 定义handlerfunc类型
+type HandlerFunc func(ResponseWriter, *Request)
+
+// ServeHTTP calls f(w, r).
+func (f HandlerFunc) ServeHTTP(w ResponseWriter, r *Request) {
+	f(w, r)
+}
+```
+
+Go虽然实现了ServeHTTP方法，但是它本身没有任何逻辑，需要我们自己来实现——也就是自己定义一个HandlerFunc函数。
+
+可以看到，我们通过curl请求本地的8000端口，返回我们一个HelloWorld。这便是一个最简单的Handler实现了。
+
+但是我们的目标是中间件，通过上面的方法，我们可以大致明白，`myHandler`函数应该作为最后的调用，在它之前才是中间件该作用的地方。
+
+**我们可以实现一个逻辑，包含了这个myHandler，但是这个函数本身也必须是Handler。**
+
+先大概阐述一下这个中间件的作用，它会拦截非预期host的请求。
+
+```go
+package main
+
+import "net/http"
+
+type SingleHost struct {
+	handler http.Handler	// myHandler
+	allowedHost string		// 允许的host
+}
+
+func(this *SingleHost)ServeHTTP(w http.ResponseWriter, r *http.Request){
+	if (r.Host == this.allowedHost){
+		this.handler.ServeHTTP(w, r)
+	}else{
+		w.WriteHeader(403)
+	}
+}
+
+func myHandler(w http.ResponseWriter, r *http.Request){
+	w.Write([]byte("Hello World"))
+}
+
+func main() {
+	single := &SingleHost{
+		handler:http.HandlerFunc(myHandler),
+		allowedHost:"localhost:7777",
+	}
+	http.ListenAndServe(":7777", single)
+}
+```
+
+### 以函数形式实现
+
+在上面，我们实现了以类型为基础的中间件。下面是用函数为基础来实现。首先，因为我们是以函数来实现中间件，因此这个**函数返回的必须是Handler**，它会接受两个参数，一个myHandler，一个allowedHost。
+
+```go
+package main
+
+import "net/http"
+
+func SingleHost(handler http.Handler, allowedHost string) http.Handler {
+	fn := func(w http.ResponseWriter, r *http.Request) {
+		if r.Host == allowedHost {
+			handler.ServeHTTP(w, r)
+		} else {
+			w.WriteHeader(403)
+		}
+	}
+	return http.HandlerFunc(fn)
+}
+
+func myHandler(w http.ResponseWriter, r *http.Request) {
+	w.Write([]byte("Hello World"))
+}
+
+func main() {
+  single := SingleHost(http.HandlerFunc(myHandler), "localhsot:7777")
+	http.ListenAndServe(":7777", single)
+}
+```
+
+## Reference
+
+- [go实现中间件](https://juejin.im/post/5a644654f265da3e393a844f)
+- [middleware](https://juejin.im/post/5a644654f265da3e393a844f)
 
