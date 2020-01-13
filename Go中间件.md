@@ -3,6 +3,10 @@
 - [base](#base)
 	- [使用middleware剥离非业务逻辑](#使用middleware剥离非业务逻辑)
 	- [更优雅的middleware写法](#更优雅的middleware写法)
+- [new](#new)
+	- [以类的形式](#以类的形式)
+	- [以函数形式实现](#以函数形式实现)
+- [Reference](Reference)
 
 ## base
 
