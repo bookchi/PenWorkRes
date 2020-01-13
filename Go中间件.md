@@ -1,13 +1,8 @@
 # go框架
 
-- [go框架](#go--)
-  * [base](#base)
-    + [使用middleware剥离非业务逻辑](#--middleware-------)
-    + [更优雅的middleware写法](#----middleware--)
-  * [new](#new)
-    + [以类的形式](#-----)
-    + [以函数形式实现](#-------)
-  * [Reference](#reference)
+- [base](#base)
+	- [使用middleware剥离非业务逻辑](#使用middleware剥离非业务逻辑)
+	- [更优雅的middleware写法](#更优雅的middleware写法)
 
 ## base
 
